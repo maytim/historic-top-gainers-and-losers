@@ -73,47 +73,6 @@ class sector:
         #with open(str(filename)+'.txt','w') as outfile:
             #json.dump(self.data,outfile)
 
-    # get historical data to add to the database for each stock
-    def get_historical_data(self, start, end):
-        # get each industry within the sector database
-        for key in self.data:
-            # get the industry data with the key
-            industry = self.data[key]
-
-            # get the list of companies within each industry
-            for company in industry['companies']:
-
-                raw_data = self.yahoo_finance_historical_query(company,start,end)
-
-                # check that the quote data was correctly loaded
-                # a possiblity for an error could be lack of data for stock X in the given timeframe
-                if raw_data['query']['results'] is not None:
-                    # create the company entry if it doesn't exist
-                    if not company in industry['quotes']:
-                        industry['quotes'][company] = {}
-
-                    # parse the 'raw_data' to get the quotes for each day
-                    #print(str(raw_data['query']['results']['quote']))
-                    for data in raw_data['query']['results']['quote']:
-                        # for the case where a single quote is returned then don't iterate through the list
-                        if isinstance(data,str):
-                            data = raw_data['query']['results']['quote']
-                        # cache the relevant data
-                        date = data['Date']
-                        price_open = data['Open']
-                        price_close = data['Close']
-                        # calculate the daily return
-                        # Note: used Decimal() in order to get precise results that can be rounded to 2 places
-                        price_return = round((Decimal(price_close)-Decimal(price_open))/Decimal(price_open) * 100,2)
-
-                        # check that this date wasn't already recorded
-                        if not date in industry['quotes'][company]:
-                            industry['quotes'][company][date] = {
-                                'open': price_open,
-                                'close': price_close,
-                                'daily_return': str(price_return)
-                            }
-
     def get_returns_data(self, start, end):
         # get each industry within the sector database
         for key in self.data_scope:
@@ -159,45 +118,6 @@ class sector:
             # create keys in the dict for each day initialized with []
             self.returns[current.strftime('%Y-%m-%d')] = {}
             current += timedelta(days=1)
-
-    def find_gainer_and_losers(self):
-        # search through industries
-        # search through companies
-        # read each date per company
-        # compare returns to those in the array at that date location
-        # if return is in top 5 then record the company ticker
-        # then continue checking through the the company's dates
-        # then continue through the company's in the industries
-        # then continue to the next industry
-        for key in self.data:
-            industry = self.data[key]
-            for company in industry['quotes']:
-                for date in industry['quotes'][company]:
-                    daily_return = industry['quotes'][company][date]['daily_return']
-
-                    smallest = min(self.gainers[date])
-                    # check #1 is to see if the list isn't full yet
-                    if len(self.gainers[date]) < 5:
-                        if daily_return in self.gainers[date]:
-                            self.gainers[date][daily_return].append(company)
-                        else:
-                            self.gainers[date][daily_return] = []
-                            self.gainers[date][daily_return].append(company)
-
-                    # check #2 is to see if the return of the last item (since sorted it should be the lowest)
-                    # is smaller than the current value
-
-                    elif smallest < daily_return:
-                        # remove the previous min
-                        del self.gainers[date][smallest]
-
-                        # add the new entry
-                        self.gainers[date][daily_return] = []
-                        self.gainers[date][daily_return].append(company)
-
-                    # check #3 is to see if the return is already in the dictionary
-                    elif daily_return in self.gainers[date]:
-                        self.gainers[date][daily_return].append(company)
 
     def get_gainers(self,date,count):
         return nlargest(count, self.returns[date].items())
