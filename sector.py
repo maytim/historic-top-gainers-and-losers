@@ -5,7 +5,19 @@ import requests
 from decimal import *
 from datetime import date, datetime, timedelta
 from heapq import nsmallest, nlargest
-from operator import itemgetter
+from timeit import default_timer
+from functools import wraps
+
+# wrapper function to report elapsed time of functions
+def elapsed_time(function):
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        start = default_timer()
+        result = function(*args, **kwargs)
+        end = default_timer()
+        print(function.__name__, '%.2f seconds' % (end-start))
+        return result
+    return wrapper
 
 class sector:
     # Constructor
@@ -73,6 +85,7 @@ class sector:
         #with open(str(filename)+'.txt','w') as outfile:
             #json.dump(self.data,outfile)
 
+    @elapsed_time
     def get_returns_data(self, start, end):
         # get each industry within the sector database
         for key in self.data_scope:
@@ -106,6 +119,7 @@ class sector:
                         self.returns[date][price_return].append(company)
 
     # helper function to generate empty dictionaries of dates (designed for gainers / losers)
+    @elapsed_time
     def initialize_returns(self,start,end):
         # takes dates (start, stop) in format '%Y-%m-%d'
         start_date = datetime.strptime(start,'%Y-%m-%d')
@@ -119,8 +133,10 @@ class sector:
             self.returns[current.strftime('%Y-%m-%d')] = {}
             current += timedelta(days=1)
 
+    @elapsed_time
     def get_gainers(self,date,count):
         return nlargest(count, self.returns[date].items())
 
+    @elapsed_time
     def get_losers(self,date,count):
         return nsmallest(count, self.returns[date].items())
